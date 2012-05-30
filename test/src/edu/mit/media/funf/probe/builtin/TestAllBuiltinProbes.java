@@ -68,41 +68,41 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 	
 	@SuppressWarnings("rawtypes")
 	public static final Class[] ALL_PROBES = {
-		AccelerometerFeaturesProbe.class,
-		AccelerometerSensorProbe.class,
-		ApplicationsProbe.class,
-		AudioFeaturesProbe.class,
-		AudioMediaProbe.class,
-		BatteryProbe.class,
-		BluetoothProbe.class,
-		BrowserBookmarksProbe.class,
-		BrowserSearchesProbe.class,
-		CallLogProbe.class,
-		CellTowerProbe.class,
-		ContactProbe.class,
-		GravitySensorProbe.class,
-		GyroscopeSensorProbe.class,
-		HardwareInfoProbe.class,
-		ImageMediaProbe.class,
-		LightSensorProbe.class,
-		LinearAccelerationSensorProbe.class,
-		LocationProbe.class,
-		MagneticFieldSensorProbe.class,
-		OrientationSensorProbe.class,
-		PressureSensorProbe.class,
-		ProcessStatisticsProbe.class,
-		ProximitySensorProbe.class,
-		RotationVectorSensorProbe.class,
-		RunningApplicationsProbe.class,
-		ServicesProbe.class,
-		SimpleLocationProbe.class,
-		ScreenProbe.class,
-		SmsProbe.class,
-		TelephonyProbe.class,
-		TemperatureSensorProbe.class,
-		TimeOffsetProbe.class,
-		VideoMediaProbe.class,
-		WifiProbe.class
+//		AccelerometerFeaturesProbe.class, //ok
+//		AccelerometerSensorProbe.class, //ok
+//		ApplicationsProbe.class, //ok
+//		AudioFeaturesProbe.class, //ok
+//		AudioMediaProbe.class, //ok
+		BatteryProbe.class, //ok
+//		BluetoothProbe.class, //configuration ok, but I have not yet get the return of scan data
+//		BrowserBookmarksProbe.class, //ok
+//		BrowserSearchesProbe.class, //ok
+//		CallLogProbe.class, //ok, dumps all call_log
+//		CellTowerProbe.class, //?, use bundle
+//		ContactProbe.class, //ok
+//		GravitySensorProbe.class, //ok
+//		GyroscopeSensorProbe.class, //ok
+//		HardwareInfoProbe.class, //ok
+//		ImageMediaProbe.class, //ok
+//		LightSensorProbe.class, //ok
+//		LinearAccelerationSensorProbe.class,
+//		LocationProbe.class, //ok, pass
+//		MagneticFieldSensorProbe.class,
+//		OrientationSensorProbe.class,
+//		PressureSensorProbe.class,
+//		ProcessStatisticsProbe.class,
+//		ProximitySensorProbe.class,
+//   	RotationVectorSensorProbe.class, //ok, rotation vector
+//		RunningApplicationsProbe.class, //not quite sure ??? not quite sure how it works? only get the COMPLETE message
+//		ServicesProbe.class,
+//		SimpleLocationProbe.class, //ok
+//		ScreenProbe.class, // ?? only received COMPLETE Tag
+//		SmsProbe.class, //ok, return one-way hashed value of both sender and content
+//		TelephonyProbe.class, //said disabled
+//		TemperatureSensorProbe.class,
+//		TimeOffsetProbe.class,
+//		VideoMediaProbe.class,
+//		WifiProbe.class
 	};
 	
 	
@@ -118,17 +118,19 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 		for (Class<? extends Probe> probeClass : allProbeClasses) {
 			JsonObject config = new JsonObject();
 			config.addProperty("sensorDelay", SensorProbe.SENSOR_DELAY_NORMAL);
-			config.addProperty("asdf", 1);
+			config.addProperty("maxScanTime", "60");
+			//look at SensorProbe for tag: "configurable"
+			config.addProperty("asdf", 1); //it doesn't crash the 
 			config.addProperty("zzzz", "__");
-			Probe probe = gson.fromJson(config, probeClass);
+			Probe probe = gson.fromJson(config, probeClass);//the time that build the probe and add default configuration
 			probe.addStateListener(stateListener);
 			probe.registerListener(listener);
-			Thread.sleep(100L);
+			Thread.sleep(10000L);
 			if (probe instanceof ContinuousProbe) {
 				((ContinuousProbe)probe).unregisterListener(listener);
 			}
 		}
-		// Run simultaneously
+		// Run simultaneously //why running simultaneously?
 		List<Probe> probes = new ArrayList<Probe>();
 		for (Class<? extends Probe> probeClass : allProbeClasses) {
 			probes.add(gson.fromJson(Probe.DEFAULT_CONFIG, probeClass));
@@ -137,7 +139,7 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 			probe.addStateListener(stateListener);
 			probe.registerListener(listener);
 		}
-		Thread.sleep(10000L);
+		Thread.sleep(1000L);
 		for (Probe probe : probes) {
 			if (probe instanceof ContinuousProbe) {
 				((ContinuousProbe)probe).unregisterListener(listener);
