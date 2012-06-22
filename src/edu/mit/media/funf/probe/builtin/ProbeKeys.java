@@ -134,7 +134,12 @@ public class ProbeKeys {
 	
 	public static interface BluetoothKeys extends BaseProbeKeys {
 		public static final String 
-		DEVICES = "devices";
+		//DEVICES = "devices",
+		RSSI = "android.bluetooth.device.extra.RSSI",
+		DEVICE = "android.bluetooth.device.extra.DEVICE",
+		NAME = "android.bluetooth.device.extra.NAME",
+		CLASS = "android.bluetooth.device.extra.CLASS";
+		
 	}
 	
 	public static class BrowserBookmarksKeys extends android.provider.Browser.BookmarkColumns implements BaseProbeKeys {

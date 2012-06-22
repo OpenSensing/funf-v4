@@ -28,8 +28,11 @@ import java.lang.reflect.Type;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
@@ -123,6 +126,7 @@ public class FunfManager extends Service {
 		// TODO: bootstrap from meta parameters if pipelines don't exist
 		Bundle metadata = getMetadata();
 		for (String keyName : metadata.keySet()) {
+			// NOTE: this is the place where FunfManager will look at the Manifest.xml and see if there's pipeline been hardcoded
 			// Determine if resource or value, If resource get value
 			// Parse value into JsonElement
 			
@@ -172,7 +176,8 @@ public class FunfManager extends Service {
 				
 				BigDecimal now = TimeUtil.getTimestamp();
 				final Probe probe = getGson().fromJson(probeConfig, Probe.class); 
-				List<DataRequestInfo> requests = dataRequests.get(probeConfig);
+				List<DataRequestInfo> requests = dataRequests.get(probeConfig); 
+				//NOTE: so I could have many different DataRequestInfo objects in probeConfig? What does one probeConfig look like 
 				
 				// TODO: Need to allow for some listeners to be registered and unregistered on different schedules
 				if (probe != null) {
@@ -373,6 +378,7 @@ public class FunfManager extends Service {
 	}
 	
 	private void requestData(DataListener listener, IJsonObject completeProbeConfig, Schedule schedule) {
+		//Note: This where Where you get to set all the schedule. 
 		if (listener == null) {
 			throw new IllegalArgumentException("Listener cannot be null");
 		}
@@ -398,6 +404,50 @@ public class FunfManager extends Service {
 	public void unrequestAllData(DataListener listener) {
 		unrequestData(listener, (IJsonObject)null);
 	}
+	
+	public void unrequestAllData2(DataListener listener){
+		
+		Map<IJsonObject,List<DataRequestInfo>> changedEntrySet = new HashMap<IJsonObject, List<DataRequestInfo>>();
+		
+		synchronized (dataRequests) {
+			
+			for (Entry<IJsonObject,List<DataRequestInfo>> entry : dataRequests.entrySet()) {
+				IJsonObject probeConfig = entry.getKey();
+				List<DataRequestInfo> dataRequestInfos = entry.getValue();
+				
+				for(int i = 0 ; i < dataRequestInfos.size(); i++){
+					// go through each entrySet of <IJsonObject, List<DataReqyestInfo>> to look for DataRequest.listener
+					DataRequestInfo removalTarget = dataRequestInfos.get(i);
+					if(removalTarget.listener == listener){
+						Probe probe = gson.fromJson(probeConfig, Probe.class);
+						Log.i(TAG, "unregistering:" + probeConfig.toString());
+						Log.i(TAG, "Old dataRequestInfos size for this probe:" + dataRequestInfos.size());
+						if (probe instanceof ContinuousProbe) {
+							((ContinuousProbe)probe).unregisterListener(listener);
+						}
+						if (probe instanceof PassiveProbe) {
+							((PassiveProbe)probe).unregisterPassiveListener(listener);
+						}
+						//
+						dataRequestInfos.remove(i);
+						changedEntrySet.put(probeConfig, dataRequestInfos); //record those (probeConfig, DataRequestInfo_List) that are changed
+						break;//Should only have one request for this listener and probe
+					}
+				}
+				
+			}
+			
+			for(Entry<IJsonObject,List<DataRequestInfo>> entry : changedEntrySet.entrySet()){
+				//now overwrite the old dataRequests
+				Log.i(TAG, "rewiring dataRequests with probe key:" + entry.getKey().toString());
+				Log.i(TAG, "rewiring the dataRequestInfo(List)'s size should be smaller by 1:" + entry.getValue().size());
+				dataRequests.put(entry.getKey(), entry.getValue());
+				
+			}
+		}
+	}
+	
+
 	
 	public void unrequestData(DataListener listener, JsonElement probeConfig) {
 		Probe probe = gson.fromJson(probeConfig, Probe.class);
@@ -448,7 +498,7 @@ public class FunfManager extends Service {
 			Probe probe = gson.fromJson(completeProbeConfig, Probe.class);
 			for (int i = 0; i < requests.size(); i++) {
 				if (requests.get(i).listener == listener) {
-					requests.remove(i);
+					requests.remove(i); //why is it not removing dataRequestInfo from dataRequests?
 					if (probe instanceof ContinuousProbe) {
 						((ContinuousProbe)probe).unregisterListener(listener);
 					}

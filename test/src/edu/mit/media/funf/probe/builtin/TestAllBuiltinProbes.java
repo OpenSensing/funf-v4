@@ -21,6 +21,7 @@ import edu.mit.media.funf.probe.Probe.ContinuousProbe;
 import edu.mit.media.funf.probe.Probe.DataListener;
 import edu.mit.media.funf.probe.Probe.State;
 import edu.mit.media.funf.probe.Probe.StateListener;
+import edu.mit.media.funf.probe.builtin.ProbeKeys.BluetoothKeys;
 
 
 /**
@@ -37,6 +38,15 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 		@Override
 		public void onDataReceived(IJsonObject completeProbeUri, IJsonObject data) {
 			Log.i(TAG, "DATA: " + completeProbeUri.toString() + " " + data.toString());
+ 
+//			Log.i(TAG, "Devices" + data.get(BluetoothKeys.DEVICES));
+//			Log.i(TAG, "Probes" + data.get(BluetoothKeys.PROBE));
+			Log.i(TAG, "TIMESTAMP: " + data.get(BluetoothKeys.TIMESTAMP));
+			Log.i(TAG, "RSSI: " + data.get(BluetoothKeys.RSSI));
+			Log.i(TAG, "NAME: " + data.get(BluetoothKeys.NAME));
+			Log.i(TAG, "CLASS: " + data.get(BluetoothKeys.CLASS));
+			
+			
 		}
 
 		@Override
@@ -73,8 +83,8 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 //		ApplicationsProbe.class, //ok
 //		AudioFeaturesProbe.class, //ok
 //		AudioMediaProbe.class, //ok
-		BatteryProbe.class, //ok
-//		BluetoothProbe.class, //configuration ok, but I have not yet get the return of scan data
+//		BatteryProbe.class, //ok
+		BluetoothProbe.class, //configuration ok, but I have not yet get the return of scan data
 //		BrowserBookmarksProbe.class, //ok
 //		BrowserSearchesProbe.class, //ok
 //		CallLogProbe.class, //ok, dumps all call_log
