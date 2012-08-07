@@ -20,6 +20,8 @@
  * You should have received a copy of the GNU Lesser General Public
  * License along with Funf. If not, see <http://www.gnu.org/licenses/>.
  * 
+ * Last edited by Fuming Shih at Aug 7, 2012
+ * 
  */
 package edu.mit.media.funf.probe.builtin;
 
@@ -48,8 +50,15 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 
 	@Configurable
 	private double interval = 1.0;
+	private static final long INTERVAL = 1L;
 	
-	private long startTime;
+	private double startTime;
+	private int intervalCount;
+	private int lowActivityIntervalCount;
+	private int highActivityIntervalCount;
+	
+	
+	
 	private ActivityCounter activityCounter = new ActivityCounter();
 	
 	@Override
@@ -88,14 +97,20 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		private float sum;
 		private int count;
 		
-		private void reset() {
+		private void reset(double timestamp) {
 			// If more than an interval away, start a new scan
 			varianceSum = avg = sum = count = 0;
+			startTime = intervalStartTime = timestamp;
+			varianceSum = avg = sum = count = 0;
+			intervalCount = 1;
+			lowActivityIntervalCount = 0;
+			highActivityIntervalCount = 0;
 		}
 		
 		private void intervalReset() {
 			Log.d(LogUtil.TAG, "interval RESET");
 			// Calculate activity and reset
+			intervalCount++;
 			JsonObject data = new JsonObject();
 			if (varianceSum >= 10.0f) {
 				data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_HIGH);
@@ -105,6 +120,7 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 				data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_NONE);
 			}
 			sendData(data);
+			intervalStartTime += INTERVAL; // Ensure 1 second intervals
 			varianceSum = avg = sum = count = 0;
 		}
 		
@@ -131,7 +147,7 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 			Log.d(LogUtil.TAG, "RECEIVED:" + timestamp);
 			if (timestamp >= intervalStartTime + 2 * interval) {
 				Log.d(LogUtil.TAG, "RESET:" + timestamp);
-				reset();
+				reset(timestamp);
 			} else if (timestamp >= intervalStartTime + interval) {
 				Log.d(LogUtil.TAG, "interval Reset:" + timestamp);
 				intervalReset();
@@ -143,6 +159,7 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		}
 
 		@Override
+		
 		public void onDataCompleted(IJsonObject completeProbeUri, JsonElement checkpoint) {
 			// Do nothing
 		}
