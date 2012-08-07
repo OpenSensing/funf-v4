@@ -1,8 +1,11 @@
 package edu.mit.media.funf.probe.builtin;
 
 import java.io.IOException;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import android.os.Debug;
@@ -22,6 +25,7 @@ import edu.mit.media.funf.probe.Probe.DataListener;
 import edu.mit.media.funf.probe.Probe.State;
 import edu.mit.media.funf.probe.Probe.StateListener;
 import edu.mit.media.funf.probe.builtin.ProbeKeys.BluetoothKeys;
+import edu.mit.media.funf.time.TimeUnit;
 
 
 /**
@@ -39,12 +43,15 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 		public void onDataReceived(IJsonObject completeProbeUri, IJsonObject data) {
 			Log.i(TAG, "DATA: " + completeProbeUri.toString() + " " + data.toString());
  
-//			Log.i(TAG, "Devices" + data.get(BluetoothKeys.DEVICES));
+//			Log.i(TAG, "date: " + data.get(ProbeKeys.CallLogKeys.DATE).getAsLong());
+			
+			
+			
 //			Log.i(TAG, "Probes" + data.get(BluetoothKeys.PROBE));
-			Log.i(TAG, "TIMESTAMP: " + data.get(BluetoothKeys.TIMESTAMP));
-			Log.i(TAG, "RSSI: " + data.get(BluetoothKeys.RSSI));
-			Log.i(TAG, "NAME: " + data.get(BluetoothKeys.NAME));
-			Log.i(TAG, "CLASS: " + data.get(BluetoothKeys.CLASS));
+//			Log.i(TAG, "TIMESTAMP: " + data.get(BluetoothKeys.TIMESTAMP));
+//			Log.i(TAG, "RSSI: " + data.get(BluetoothKeys.RSSI));
+//			Log.i(TAG, "NAME: " + data.get(BluetoothKeys.NAME));
+//			Log.i(TAG, "CLASS: " + data.get(BluetoothKeys.CLASS));
 			
 			
 		}
@@ -84,7 +91,7 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 //		AudioFeaturesProbe.class, //ok
 //		AudioMediaProbe.class, //ok
 //		BatteryProbe.class, //ok
-		BluetoothProbe.class, //configuration ok, but I have not yet get the return of scan data
+//		BluetoothProbe.class, //configuration ok, but I have not yet get the return of scan data
 //		BrowserBookmarksProbe.class, //ok
 //		BrowserSearchesProbe.class, //ok
 //		CallLogProbe.class, //ok, dumps all call_log
@@ -99,14 +106,14 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 //		LocationProbe.class, //ok, pass
 //		MagneticFieldSensorProbe.class,
 //		OrientationSensorProbe.class,
-//		PressureSensorProbe.class,
+		PressureSensorProbe.class,
 //		ProcessStatisticsProbe.class,
 //		ProximitySensorProbe.class,
 //   	RotationVectorSensorProbe.class, //ok, rotation vector
 //		RunningApplicationsProbe.class, //not quite sure ??? not quite sure how it works? only get the COMPLETE message
 //		ServicesProbe.class,
 //		SimpleLocationProbe.class, //ok
-//		ScreenProbe.class, // ?? only received COMPLETE Tag
+//		ScreenProbe.class, // ok
 //		SmsProbe.class, //ok, return one-way hashed value of both sender and content
 //		TelephonyProbe.class, //said disabled
 //		TemperatureSensorProbe.class,
@@ -118,7 +125,7 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 	
 	
 	@SuppressWarnings("unchecked")
-	public void testAll() throws ClassNotFoundException, IOException, InterruptedException {
+	public void testAll() throws ClassNotFoundException, IOException, InterruptedException, ParseException {
 		Log.i(TAG,"Running");
 		Debug.startMethodTracing("calc");
 		List<Class<? extends Probe>> allProbeClasses = Arrays.asList((Class<? extends Probe>[])ALL_PROBES);
@@ -127,15 +134,28 @@ public class TestAllBuiltinProbes extends AndroidTestCase {
 		Gson gson = getGson();
 		for (Class<? extends Probe> probeClass : allProbeClasses) {
 			JsonObject config = new JsonObject();
-			config.addProperty("sensorDelay", SensorProbe.SENSOR_DELAY_NORMAL);
-			config.addProperty("maxScanTime", "60");
+			//config.addProperty("sensorDelay", SensorProbe.SENSOR_DELAY_NORMAL);
+			
+			/*
+			 * For those probes that need to set datetime
+			 */
+			SimpleDateFormat sdf  = new SimpleDateFormat("yyyy-MM-dd kk:mm:ss");
+			Date date= sdf.parse("2012-06-16 00:00:00");
+			long timeInMillisSinceEpoch = date.getTime();
+			long epochTime = TimeUnit.MILLISECONDS.toSeconds(timeInMillisSinceEpoch);
+			
+			Log.i(TAG, "epochTime: " + epochTime);
+			
+			String epochString = Long.toString(epochTime);
+			//config.addProperty("maxScanTime", "60");
+			config.addProperty("afterDate", epochString);
 			//look at SensorProbe for tag: "configurable"
 			config.addProperty("asdf", 1); //it doesn't crash the 
 			config.addProperty("zzzz", "__");
 			Probe probe = gson.fromJson(config, probeClass);//the time that build the probe and add default configuration
 			probe.addStateListener(stateListener);
 			probe.registerListener(listener);
-			Thread.sleep(10000L);
+			Thread.sleep(30000L);
 			if (probe instanceof ContinuousProbe) {
 				((ContinuousProbe)probe).unregisterListener(listener);
 			}
