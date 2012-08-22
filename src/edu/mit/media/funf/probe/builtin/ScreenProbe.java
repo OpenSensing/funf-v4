@@ -27,6 +27,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.PowerManager;
 
 import com.google.gson.JsonObject;
 
@@ -63,6 +64,14 @@ public class ScreenProbe extends Base implements ContinuousProbe, ScreenKeys  {
 				}
 			}
 		};
+		
+		// sendData of current Screen status at least once
+		PowerManager pm = (PowerManager) this.getContext().getSystemService(Context.POWER_SERVICE);
+		boolean isScreenOn = pm.isScreenOn();
+		JsonObject data = new JsonObject();
+		data.addProperty(SCREEN_ON, isScreenOn);
+		sendData(data);
+		
 		getContext().registerReceiver(screenReceiver, filter);
 	}
 	

@@ -308,8 +308,19 @@ public class ProbeKeys {
 	}
 	
 	public static interface WifiKeys extends BaseProbeKeys {
+		
+//		{"BSSID":"00:1f:5b:88:97:e3",
+//		 "SSID":"scbackup",
+//		 "capabilities":"[WPA2-PSK-CCMP]",
+//		 "frequency":2462,
+//		 "level":-60}
 		public static final String 
-		SCAN_RESULTS = "scanResults";
+		BSSID = "BSSID",
+		SSID = "SSID",
+		CAPABILITIES  = "capabilities",
+		FREQUENCY = "frequency",
+		LEVEL = "level";
+
 	}
 	
 	public static interface ServicesKeys extends BaseProbeKeys {
