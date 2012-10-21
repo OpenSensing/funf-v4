@@ -151,7 +151,15 @@ public class ProbeKeys {
 	}
 	
 	public static class CallLogKeys extends android.provider.CallLog.Calls implements BaseProbeKeys {
-		public static final String CALLS = "calls";
+		public static final String
+		DATE = "date",
+		DURATION = "duration",
+		NAME = "name",
+		NUMBER = "number",
+		TYPE = "type",
+		NUMBER_TYPE = "numbertype",
+		NUMBER_LABEL = "numberlabel";
+		//CALLS = "CALLS";
 	}
 	
 	public static interface CellKeys extends BaseProbeKeys {
@@ -267,6 +275,13 @@ public class ProbeKeys {
 	
 	public static interface SmsKeys extends BaseProbeKeys, AndroidInternal.TextBasedSmsColumns {
 		// public static final String 
+		public static final String
+		ADDRESS = "address",
+		BODY = "body",
+		DATE = "date",
+		TYPE = "type",
+		READ = "read";
+		
 	}
 	
 	public static interface TelephonyKeys extends BaseProbeKeys {

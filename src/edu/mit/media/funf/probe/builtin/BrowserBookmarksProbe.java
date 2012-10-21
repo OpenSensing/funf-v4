@@ -55,8 +55,8 @@ public class BrowserBookmarksProbe extends DatedContentProviderProbe {
 		projectionKeyToType.put(Browser.BookmarkColumns.VISITS, intCell());
 		projectionKeyToType.put(Browser.BookmarkColumns.DATE, longCell());
 		projectionKeyToType.put(Browser.BookmarkColumns.CREATED, longCell());
-		projectionKeyToType.put(Browser.BookmarkColumns.BOOKMARK, intCell());
-		//projectionKeyToType.put(Browser.BookmarkColumns.DESCRIPTION, hashedStringCell());  // TODO: Description doesn't exist
+		projectionKeyToType.put(Browser.BookmarkColumns.BOOKMARK, intCell());//Flag indicating that an item is
+		//a bookmark. A value of 1 indicates a bookmark, a value of 0 indicates a history item.
 		return projectionKeyToType;
 	}
 

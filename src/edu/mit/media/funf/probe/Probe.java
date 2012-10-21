@@ -50,6 +50,7 @@ import com.google.gson.TypeAdapterFactory;
 
 import edu.mit.media.funf.FunfManager;
 import edu.mit.media.funf.Schedule.DefaultSchedule;
+import edu.mit.media.funf.config.Configurable;
 import edu.mit.media.funf.data.DataNormalizer;
 import edu.mit.media.funf.json.BundleTypeAdapter;
 import edu.mit.media.funf.json.IJsonObject;
@@ -738,7 +739,7 @@ public interface Probe {
 		 * If you uncomment this line please submit the change
 		 * to funf@media.mit.edu in accordance with the LGPL license. *
 		 */
-		//@Configurable
+		@Configurable
 		private boolean hideSensitiveData = true;
 
 		protected final String sensitiveData(String data) {
