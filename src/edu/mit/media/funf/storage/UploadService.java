@@ -155,6 +155,9 @@ public abstract class UploadService extends Service {
 	protected void runArchive(FileArchive archive, RemoteFileArchive remoteArchive, File file, int network) {
 		Integer numRemoteFailures = remoteArchiveFailures.get(remoteArchive.getId());
 		numRemoteFailures = (numRemoteFailures == null) ? 0 : numRemoteFailures;
+		Log.i(LogUtil.TAG, "numRemoteFailures:" + numRemoteFailures );
+		Log.i(LogUtil.TAG, "isOnline:" + isOnline(network) );
+		
 		if (numRemoteFailures < MAX_REMOTE_ARCHIVE_RETRIES && isOnline(network)) {
 			Log.i(LogUtil.TAG, "Archiving..." + file.getName());
 			if(remoteArchive.add(file)) {
@@ -205,10 +208,15 @@ public abstract class UploadService extends Service {
 	
 	public boolean isOnline(int network) {
 	    NetworkInfo netInfo = connectivityManager.getActiveNetworkInfo();
+	    
 	    if (network == NETWORK_ANY && netInfo != null && netInfo.isConnectedOrConnecting()) {
 	        return true;
 	    } else if (network == NETWORK_WIFI_ONLY ) {
+	    	Log.i(LogUtil.TAG,"we are in isOnline(): NETOWORK_WIFI_ONLY "+ network);
+	    	Log.i(LogUtil.TAG, "Prining out debugging info of connectivityStatus: ");
+
 		    State wifiInfo = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI).getState();
+		    Log.i(LogUtil.TAG, wifiInfo.toString());
 		    if (State.CONNECTED.equals(wifiInfo) || State.CONNECTING.equals(wifiInfo)) {
 		    	return true;
 		    }
