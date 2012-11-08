@@ -90,6 +90,22 @@ public class ProbeKeys {
 		ACTIVITY_LEVEL_HIGH = "high";
 	}
 	
+	public static interface PedometerKeys extends BaseProbeKeys {
+		public static final String 
+		SENSITIVITY_LEVEL = "sensitivityLevel",
+		RAW_VALUE = "rawValue",
+		SENSITIVITY_LEVEL_EXTRA_HIGH = "extraHigh",
+		SENSITIVITY_LEVEL_VERY_HIGH = "veryHigh",
+		SENSITIVITY_LEVEL_HIGH = "high",
+		SENSITIVITY_LEVEL_HIGHER = "higher",
+		SENSITIVITY_LEVEL_MEDIUM = "medium",
+		SENSITIVITY_LEVEL_LOW = "low",
+		SENSITIVITY_LEVEL_LOWER = "lower",
+		SENSITIVITY_LEVEL_VERY_LOW = "veryLow",
+		SENSITIVITY_LEVEL_EXTRA_LOW = "extraLow";
+	
+	}
+	
 	public static interface AndroidInfoKeys extends BaseProbeKeys {
 		public static final String 
 		FIRMWARE_VERSION = "firmwareVersion",
