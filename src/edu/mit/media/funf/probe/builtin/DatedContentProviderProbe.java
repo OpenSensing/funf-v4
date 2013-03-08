@@ -24,12 +24,14 @@
 package edu.mit.media.funf.probe.builtin;
 
 import java.math.BigDecimal;
+import java.security.acl.LastOwnerException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import android.database.Cursor;
 import android.net.Uri;
+import android.util.Log;
 
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
@@ -37,6 +39,7 @@ import com.google.gson.JsonObject;
 import edu.mit.media.funf.config.Configurable;
 import edu.mit.media.funf.probe.Probe.ContinuableProbe;
 import edu.mit.media.funf.time.DecimalTimeUnit;
+import edu.mit.media.funf.util.LogUtil;
 
 public abstract class DatedContentProviderProbe extends ContentProviderProbe implements ContinuableProbe {
 
@@ -48,6 +51,7 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 	@Override
 	protected Cursor getCursor(String[] projection) {
 		String dateColumn = getDateColumnName();
+		Log.v(LogUtil.TAG, "latestTimestamp" + latestTimestamp);
 		// Used the code below when we specified projection exactly
 		List<String> projectionList = Arrays.asList(projection);
 		if (!Arrays.asList(projection).contains(dateColumn)) {
@@ -69,7 +73,7 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 				projection, // TODO: different platforms have different fields supported for content providers, need to resolve this
 				dateFilter, 
 				dateFilterParams,
-                dateColumn + " DESC");
+                dateColumn + " ASC");
 	}
 	
 	protected abstract Uri getContentProviderUri();
@@ -99,6 +103,7 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 
 	@Override
 	public void setCheckpoint(JsonElement checkpoint) {
+		Log.v(LogUtil.TAG, "SetCheckpoint here" +  checkpoint.getAsBigDecimal());
 		latestTimestamp = checkpoint == null ? null : checkpoint.getAsBigDecimal();
 	}
 	

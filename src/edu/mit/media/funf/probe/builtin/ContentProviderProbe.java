@@ -68,9 +68,11 @@ public abstract class ContentProviderProbe extends ImpulseProbe {
 				sendData(data);
 			}
 		}
+		stop();
 	}
-
-	
+	protected void onStop(){
+		//do nothing
+	}
 
 	private Iterable<JsonObject> parseCursorResults() {
         return new Iterable<JsonObject>() {
