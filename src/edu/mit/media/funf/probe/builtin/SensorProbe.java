@@ -29,6 +29,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Handler;
+import android.os.HandlerThread;
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -49,39 +51,49 @@ public abstract class SensorProbe extends Base implements ContinuousProbe, Senso
 	public static final double DEFAULT_DURATION = 60;
 	
 	@Configurable
-	private String sensorDelay = SENSOR_DELAY_FASTEST;
+	private String sensorDelay = SENSOR_DELAY_UI;
 	
 	public static final String 
 		SENSOR_DELAY_FASTEST = "FASTEST",
 		SENSOR_DELAY_GAME = "GAME",
 		SENSOR_DELAY_UI = "UI",
 		SENSOR_DELAY_NORMAL = "NORMAL";
-	
+
 	private SensorManager sensorManager;
 	private Sensor sensor;
 	private SensorEventListener sensorListener;
-	
+
 	@Override
 	protected void onEnable() {
 		super.onEnable();
 		sensorManager = (SensorManager) getContext().getSystemService(Context.SENSOR_SERVICE);
 		sensor = sensorManager.getDefaultSensor(getSensorType());
 		final String[] valueNames = getValueNames();
+
 		sensorListener = new SensorEventListener() {
-			
+
 			@Override
-			public void onSensorChanged(SensorEvent event) {
-				JsonObject data = new JsonObject();
-				data.addProperty(TIMESTAMP, TimeUtil.uptimeNanosToTimestamp(event.timestamp));
-				data.addProperty(ACCURACY, event.accuracy);
-				int valuesLength = Math.min(event.values.length, valueNames.length);
-				for (int i = 0; i < valuesLength; i++) {
-					String valueName = valueNames[i];
-					data.addProperty(valueName, event.values[i]);
+			public void onSensorChanged(final SensorEvent event) {
+				if (getHandler() == null) {
+					return;
 				}
-				sendData(data);
+				
+				getHandler().post(new Runnable() {
+					@Override
+					public void run() {				
+						JsonObject data = new JsonObject();
+						data.addProperty(TIMESTAMP, TimeUtil.uptimeNanosToTimestamp(event.timestamp));
+						data.addProperty(ACCURACY, event.accuracy);
+						int valuesLength = Math.min(event.values.length, valueNames.length);
+						for (int i = 0; i < valuesLength; i++) {
+							String valueName = valueNames[i];
+							data.addProperty(valueName, event.values[i]);
+						}
+						sendData(data);
+					}
+				});
 			}
-			
+
 			@Override
 			public void onAccuracyChanged(Sensor sensor, int accuracy) {
 			}

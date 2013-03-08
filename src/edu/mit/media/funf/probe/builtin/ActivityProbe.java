@@ -26,6 +26,10 @@
 package edu.mit.media.funf.probe.builtin;
 
 
+import java.math.BigDecimal;
+
+import android.os.AsyncTask;
+import android.os.Debug;
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -41,6 +45,7 @@ import edu.mit.media.funf.probe.Probe.PassiveProbe;
 import edu.mit.media.funf.probe.Probe.RequiredFeatures;
 import edu.mit.media.funf.probe.Probe.RequiredProbes;
 import edu.mit.media.funf.probe.builtin.ProbeKeys.ActivityKeys;
+import edu.mit.media.funf.time.TimeUtil;
 import edu.mit.media.funf.util.LogUtil;
 
 @Schedule.DefaultSchedule(interval=120, duration=15)
@@ -57,15 +62,7 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 	private int lowActivityIntervalCount;
 	private int highActivityIntervalCount;
 	
-	
-	
 	private ActivityCounter activityCounter = new ActivityCounter();
-	
-	@Override
-	protected void onEnable() {
-		super.onEnable();
-		getAccelerometerProbe().registerPassiveListener(activityCounter);
-	}
 
 	@Override
 	protected void onStart() {
@@ -75,21 +72,14 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 
 	@Override
 	protected void onStop() {
-		super.onStop();
 		getAccelerometerProbe().unregisterListener(activityCounter);
-	}
-
-	@Override
-	protected void onDisable() {
-		super.onDisable();
-		getAccelerometerProbe().unregisterPassiveListener(activityCounter);
+		super.onStop();
 	}
 
 	private AccelerometerSensorProbe getAccelerometerProbe() {
-		return getGson().fromJson(DEFAULT_CONFIG, AccelerometerSensorProbe.class);
+		return getGson().fromJson("{ 'sensorDelay': 3 }", AccelerometerSensorProbe.class);
 	}
 
-	
 	private class ActivityCounter implements DataListener {
 		private double intervalStartTime;
 		private float varianceSum;
@@ -141,7 +131,7 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		
 
 		@Override
-		public void onDataReceived(IJsonObject completeProbeUri, IJsonObject data) {
+		public void onDataReceived(IJsonObject completeProbeUri, final IJsonObject data) {
 			double timestamp = data.get(TIMESTAMP).getAsDouble();
 			Log.d(LogUtil.TAG, "Starttime: " + startTime + " intervalStartTime: " + intervalStartTime);
 			Log.d(LogUtil.TAG, "RECEIVED:" + timestamp);
