@@ -83,7 +83,7 @@ public class FunfManager extends Service {
 	ACTION_KEEP_ALIVE = "funf.keepalive",
 	ACTION_INTERNAL = "funf.internal";
 	
-	private static final String 
+	public static final String 
 	PROBE_TYPE = "funf/probe",
 	PIPELINE_TYPE = "funf/pipeline";
 	
@@ -132,8 +132,15 @@ public class FunfManager extends Service {
 			
 			// If JsonString create uri and (down)load file and parse for pipleine config
 			// If JsonObject use as a pipeline instance config
+			Object pipelineConfigObject = metadata.get(keyName);
+			String pipelineConfigString;
+			if (pipelineConfigObject instanceof Integer) {
+				pipelineConfigString = getString((Integer) pipelineConfigObject);
+			} else {
+				pipelineConfigString = (String) pipelineConfigObject;
+			}
 			
-			JsonElement pipelineConfig = parser.parse(metadata.getString(keyName));
+			JsonElement pipelineConfig = parser.parse(pipelineConfigString);
 			Pipeline pipeline = gson.fromJson(pipelineConfig, Pipeline.class);
 			registerPipeline(keyName, pipeline);
 		}
@@ -337,11 +344,11 @@ public class FunfManager extends Service {
 	// Scheduler will register for triggers
 	
 	public void registerPipeline(String name, Pipeline pipeline) {
+		unregisterPipeline(name);
 		synchronized (pipelines) {
-			unregisterPipeline(name);
 			pipelines.put(name, pipeline);
-			pipeline.onCreate(this);
 		}
+		pipeline.onCreate(this);
 	}
 	
 	public Pipeline getRegisteredPipeline(String name) {
@@ -351,6 +358,9 @@ public class FunfManager extends Service {
 	public void unregisterPipeline(String name) {
 		Pipeline existingPipeline = pipelines.get(name);
 		if (existingPipeline != null) {
+			synchronized (pipelines) {
+				pipelines.remove(name);
+			}
 			existingPipeline.onDestroy();
 		}
 	}
@@ -456,7 +466,10 @@ public class FunfManager extends Service {
 		rescheduleProbe(completeProbeConfig);
 	}
 	
-	private String getPipelineName(Pipeline pipeline) {
+	public void updatePipeline(Pipeline pipeline, JsonObject newConfig) {
+	}
+	
+	public String getPipelineName(Pipeline pipeline) {
 		for (Map.Entry<String, Pipeline> entry : pipelines.entrySet()) {
 			if (entry.getValue() == pipeline) {
 				return entry.getKey();
@@ -476,6 +489,12 @@ public class FunfManager extends Service {
 		String name = getPipelineName(pipeline);
 		if (name != null) {
 			scheduler.cancel(PIPELINE_TYPE, getComponenentUri(name, action));
+		}
+	}
+	
+	public void runPipelineAction(String action) {
+		for (Pipeline pipeline : pipelines.values()) {
+			pipeline.onRun(action, new JsonObject());
 		}
 	}
 	
@@ -587,13 +606,13 @@ public class FunfManager extends Service {
 		return componentUri.getFragment();
 	}
 	
-	public static Intent getFunfIntent(Context context, String type, String component, String action) {
+	public Intent getFunfIntent(Context context, String type, String component, String action) {
 		return getFunfIntent(context, type, getComponenentUri(component, action));
 	}
 	
-	public static Intent getFunfIntent(Context context, String type, Uri componentUri) {
+	public Intent getFunfIntent(Context context, String type, Uri componentUri) {
 		Intent intent = new Intent();
-		intent.setClass(context, FunfManager.class);
+		intent.setClass(context, this.getClass());
 		intent.setPackage(context.getPackageName());
 		intent.setAction(ACTION_INTERNAL);
 		intent.setDataAndType(componentUri, type);

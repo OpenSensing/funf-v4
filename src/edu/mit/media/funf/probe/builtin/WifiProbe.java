@@ -27,6 +27,8 @@ package edu.mit.media.funf.probe.builtin;
 
 import java.util.List;
 
+import org.json.JSONObject;
+
 import android.Manifest;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -38,6 +40,7 @@ import android.net.wifi.WifiManager.WifiLock;
 import android.util.Log;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonObject;
 
 import edu.mit.media.funf.Schedule;
 import edu.mit.media.funf.Schedule.DefaultSchedule;
@@ -67,7 +70,9 @@ public class WifiProbe extends Base {
 				if (results != null) {
 					Gson gson = getGson();
 					for (ScanResult result : results) {
-						sendData(gson.toJsonTree(result).getAsJsonObject());
+						JsonObject resultJson = gson.toJsonTree(result).getAsJsonObject();
+						resultJson.remove(TIMESTAMP);
+						sendData(resultJson);
 					}
 				}
 				if (getState() == State.RUNNING) {

@@ -40,6 +40,7 @@ import com.google.gson.JsonObject;
 
 import edu.mit.media.funf.Schedule;
 import edu.mit.media.funf.Schedule.DefaultSchedule;
+import edu.mit.media.funf.probe.Probe.Base;
 import edu.mit.media.funf.probe.builtin.ContentProviderProbe.CursorCell.AnyCell;
 import edu.mit.media.funf.probe.builtin.ContentProviderProbe.CursorCell.BooleanCell;
 import edu.mit.media.funf.probe.builtin.ContentProviderProbe.CursorCell.DoubleCell;
@@ -51,7 +52,7 @@ import edu.mit.media.funf.security.HashUtil;
 import edu.mit.media.funf.util.LogUtil;
 
 @Schedule.DefaultSchedule(interval=3600)
-public abstract class ContentProviderProbe extends ImpulseProbe {
+public abstract class ContentProviderProbe extends Base {
 
 	private Gson gson;
 	
@@ -68,9 +69,9 @@ public abstract class ContentProviderProbe extends ImpulseProbe {
 				sendData(data);
 			}
 		}
-	}
-
-	
+		// ContentProviderProbes are "impulses" - they run until they're out of data, then stop.
+		unregisterAllListeners();
+	}	
 
 	private Iterable<JsonObject> parseCursorResults() {
         return new Iterable<JsonObject>() {

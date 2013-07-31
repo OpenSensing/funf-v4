@@ -30,6 +30,7 @@ import android.net.Uri;
 import android.provider.MediaStore.Audio;
 import edu.mit.media.funf.Schedule;
 import edu.mit.media.funf.Schedule.DefaultSchedule;
+import edu.mit.media.funf.config.Configurable;
 import edu.mit.media.funf.probe.Probe.DisplayName;
 import edu.mit.media.funf.time.DecimalTimeUnit;
 
@@ -37,9 +38,12 @@ import edu.mit.media.funf.time.DecimalTimeUnit;
 @Schedule.DefaultSchedule(interval=36000)
 public class AudioMediaProbe extends DatedContentProviderProbe {
 
+	@Configurable
+	private boolean useInternalStorage = false;
+	
 	@Override
 	protected Uri getContentProviderUri() {
-		return Audio.Media.EXTERNAL_CONTENT_URI;
+		return (useInternalStorage)? Audio.Media.INTERNAL_CONTENT_URI : Audio.Media.EXTERNAL_CONTENT_URI;
 	}
 
 	@Override

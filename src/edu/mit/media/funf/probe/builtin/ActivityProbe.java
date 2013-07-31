@@ -26,6 +26,10 @@
 package edu.mit.media.funf.probe.builtin;
 
 
+import java.math.BigDecimal;
+
+import android.os.AsyncTask;
+import android.os.Debug;
 import android.util.Log;
 
 import com.google.gson.JsonElement;
@@ -37,10 +41,12 @@ import edu.mit.media.funf.config.Configurable;
 import edu.mit.media.funf.json.IJsonObject;
 import edu.mit.media.funf.probe.Probe.Base;
 import edu.mit.media.funf.probe.Probe.ContinuousProbe;
+import edu.mit.media.funf.probe.Probe.DataListener;
 import edu.mit.media.funf.probe.Probe.PassiveProbe;
 import edu.mit.media.funf.probe.Probe.RequiredFeatures;
 import edu.mit.media.funf.probe.Probe.RequiredProbes;
 import edu.mit.media.funf.probe.builtin.ProbeKeys.ActivityKeys;
+import edu.mit.media.funf.time.TimeUtil;
 import edu.mit.media.funf.util.LogUtil;
 
 @Schedule.DefaultSchedule(interval=120, duration=15)
@@ -56,40 +62,69 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 	private int intervalCount;
 	private int lowActivityIntervalCount;
 	private int highActivityIntervalCount;
-	
-	
+	private boolean dataSent;
 	
 	private ActivityCounter activityCounter = new ActivityCounter();
-	
-	@Override
-	protected void onEnable() {
-		super.onEnable();
-		getAccelerometerProbe().registerPassiveListener(activityCounter);
-	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
 		getAccelerometerProbe().registerListener(activityCounter);
+		dataSent = false;
 	}
 
 	@Override
 	protected void onStop() {
-		super.onStop();
 		getAccelerometerProbe().unregisterListener(activityCounter);
+		// Rather than sending data for every interval, we're aggregating like v0.3 does.
+		// This has the advantage of less entries overall and less data being uploaded = lower data
+		// consumption and hopefully better battery life (as well as lower space requirements).
+		// HOWEVER - this leads to complications (see unregisterListener method in Probe.java).
+		// An alternative (and potentially better way) is to sendData on every interval like standard v0.4
+		// and handle aggregation in the pipeline onDataCompleted method.
+		sendDataOnce(activityCounter.getData());
+
+		super.onStop();
 	}
 
-	@Override
-	protected void onDisable() {
-		super.onDisable();
-		getAccelerometerProbe().unregisterPassiveListener(activityCounter);
+	private void sendDataOnce(JsonObject data) {
+		if (!dataSent) {
+			sendData(data);
+			dataSent = true;
+		}
 	}
-
-	private AccelerometerSensorProbe getAccelerometerProbe() {
-		return getGson().fromJson(DEFAULT_CONFIG, AccelerometerSensorProbe.class);
-	}
-
 	
+	@Override
+	public void unregisterListener(final DataListener... listeners) {
+		sendDataOnce(activityCounter.getData());
+		
+		// Essentially a copy-past from Probe.java, but we're running it in the handler to assure that the sendData completes
+		// before listeners are removed...
+		getHandler().post(new Runnable() {
+			@Override
+			public void run() {			
+				if (listeners != null) {
+				JsonElement checkpoint = new JsonObject();
+				for (DataListener listener : listeners) {
+					getDataListeners().remove(listener);
+					listener.onDataCompleted(getConfig(), checkpoint);
+				}
+				// If no one is listening, stop using device resources
+				if (getDataListeners().isEmpty()) {
+					stop();
+				}
+				if (getPassiveDataListeners().isEmpty()) {
+					disable();
+				}
+			}
+			}
+		});
+	}
+	
+	private AccelerometerSensorProbe getAccelerometerProbe() {
+		return getGson().fromJson("{ 'sensorDelay': 3 }", AccelerometerSensorProbe.class);
+	}
+
 	private class ActivityCounter implements DataListener {
 		private double intervalStartTime;
 		private float varianceSum;
@@ -97,12 +132,20 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		private float sum;
 		private int count;
 		
+		public JsonObject getData() {
+			JsonObject data = new JsonObject();
+			data.addProperty(TOTAL_INTERVALS, intervalCount);
+			data.addProperty(LOW_ACTIVITY_INTERVALS, lowActivityIntervalCount);
+			data.addProperty(HIGH_ACTIVITY_INTERVALS, highActivityIntervalCount);
+			return data;
+		}
+		
 		private void reset(double timestamp) {
 			// If more than an interval away, start a new scan
 			varianceSum = avg = sum = count = 0;
 			startTime = intervalStartTime = timestamp;
 			varianceSum = avg = sum = count = 0;
-			intervalCount = 1;
+			intervalCount = 0;
 			lowActivityIntervalCount = 0;
 			highActivityIntervalCount = 0;
 		}
@@ -111,15 +154,17 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 			Log.d(LogUtil.TAG, "interval RESET");
 			// Calculate activity and reset
 			intervalCount++;
-			JsonObject data = new JsonObject();
+			//JsonObject data = new JsonObject();
 			if (varianceSum >= 10.0f) {
-				data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_HIGH);
+				//data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_HIGH);
+				highActivityIntervalCount++;
 			} else if (varianceSum < 10.0f && varianceSum > 3.0f) {
-				data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_LOW);
+				//data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_LOW);
+				lowActivityIntervalCount++;
 			} else {
-				data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_NONE);
+				//data.addProperty(ACTIVITY_LEVEL, ACTIVITY_LEVEL_NONE);
 			}
-			sendData(data);
+			//sendData(data);
 			intervalStartTime += INTERVAL; // Ensure 1 second intervals
 			varianceSum = avg = sum = count = 0;
 		}
@@ -141,15 +186,15 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		
 
 		@Override
-		public void onDataReceived(IJsonObject completeProbeUri, IJsonObject data) {
+		public void onDataReceived(IJsonObject completeProbeUri, final IJsonObject data) {
 			double timestamp = data.get(TIMESTAMP).getAsDouble();
-			Log.d(LogUtil.TAG, "Starttime: " + startTime + " intervalStartTime: " + intervalStartTime);
-			Log.d(LogUtil.TAG, "RECEIVED:" + timestamp);
+			//Log.d(LogUtil.TAG, "Starttime: " + startTime + " intervalStartTime: " + intervalStartTime);
+			//Log.d(LogUtil.TAG, "RECEIVED:" + timestamp);
 			if (timestamp >= intervalStartTime + 2 * interval) {
-				Log.d(LogUtil.TAG, "RESET:" + timestamp);
+				//Log.d(LogUtil.TAG, "RESET:" + timestamp);
 				reset(timestamp);
 			} else if (timestamp >= intervalStartTime + interval) {
-				Log.d(LogUtil.TAG, "interval Reset:" + timestamp);
+				//Log.d(LogUtil.TAG, "interval Reset:" + timestamp);
 				intervalReset();
 			}
 			float x = data.get(AccelerometerSensorProbe.X).getAsFloat();

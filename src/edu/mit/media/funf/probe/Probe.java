@@ -67,6 +67,7 @@ public interface Probe {
 	public static final boolean DEFAULT_OPPORTUNISTIC = true;
 	public static final boolean DEFAULT_STRICT = false;
 	public static final double DEFAULT_PERIOD = 3600;
+	public static final String FUNF_PROBE_PREFS = "edu.mit.media.funf.probe";
 	
 	/**
 	 * Listeners added to this probe will receive data callbacks from this
@@ -331,6 +332,8 @@ public interface Probe {
 					probe.notifyStateChange(this);
 					probe.unregisterAllListeners();
 					if (probe.lock != null && probe.lock.isHeld()) {
+						// NOTE: we might want to throw this onto the handler thread with a delay
+						// so that anything working in the background and 
 						probe.lock.release();
 						probe.lock = null;
 					}
@@ -655,6 +658,7 @@ public interface Probe {
 		 * @return
 		 */
 		protected Handler getHandler() {
+			ensureLooperThreadExists();
 			return handler;
 		}
 

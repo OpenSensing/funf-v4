@@ -74,20 +74,20 @@ public class LocationProbe extends Base implements ContinuousProbe, PassiveProbe
 		super.onEnable();
 		gson = getGson();
 		mLocationManager = (LocationManager) getContext().getSystemService(Context.LOCATION_SERVICE);
-		String passiveProvider = getPassiveProvider();
-		if (passiveProvider != null) {
-			mLocationManager.requestLocationUpdates(getPassiveProvider(), 0, 0, passiveListener);
-		}
+		//String passiveProvider = getPassiveProvider();
+		//if (passiveProvider != null) {
+		//	mLocationManager.requestLocationUpdates(getPassiveProvider(), 0, 0, passiveListener);
+		//}
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
 		if (useGps) {
-			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 0, 0, listener);
+			mLocationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, listener);
 		}
 		if (useNetwork) {
-			mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 0, 0, listener);
+			mLocationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER, 1000, 0, listener);
 		}
 		if (useCache) {
 			listener.onLocationChanged(mLocationManager.getLastKnownLocation(LocationManager.GPS_PROVIDER));
@@ -107,7 +107,7 @@ public class LocationProbe extends Base implements ContinuousProbe, PassiveProbe
 	@Override
 	protected void onDisable() {
 		super.onDisable();
-		mLocationManager.removeUpdates(passiveListener);
+		//mLocationManager.removeUpdates(passiveListener);
 	}
 
 	private class ProbeLocationListener implements LocationListener{
@@ -121,7 +121,7 @@ public class LocationProbe extends Base implements ContinuousProbe, PassiveProbe
 						|| (useNetwork && LocationManager.NETWORK_PROVIDER.equals(provider))) {
 					JsonObject data = gson.toJsonTree(location).getAsJsonObject();
 					data.addProperty(TIMESTAMP, DecimalTimeUnit.MILLISECONDS.toSeconds(data.get("mTime").getAsBigDecimal()));
-					sendData(gson.toJsonTree(location).getAsJsonObject());
+					sendData(data);
 				}
 			}
 		}

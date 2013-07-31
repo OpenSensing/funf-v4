@@ -36,7 +36,9 @@ import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 import android.os.Binder;
 import android.os.IBinder;
+import android.os.PowerManager;
 import android.util.Log;
+import edu.mit.media.funf.util.LockUtil;
 import edu.mit.media.funf.util.LogUtil;
 
 /**
@@ -78,6 +80,7 @@ public abstract class DatabaseService extends IntentService {
 
 	@Override
 	public void onHandleIntent(Intent intent) {
+		PowerManager.WakeLock wakeLock = LockUtil.getWakeLock(this);
 		Log.i(LogUtil.TAG, "Started");
 		final String databaseName = intent.getStringExtra(DATABASE_NAME_KEY);
 		if (databaseName == null) {
@@ -90,6 +93,8 @@ public abstract class DatabaseService extends IntentService {
 		} else if (action.equals(ACTION_ARCHIVE)) {
 			runArchive(databaseName);
 		}
+		
+		wakeLock.release();
 	}
 	
 	/**

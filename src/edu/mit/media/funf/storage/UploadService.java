@@ -23,14 +23,13 @@
  */
 package edu.mit.media.funf.storage;
 
-
-
 import java.io.File;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import android.app.IntentService;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -46,8 +45,13 @@ import edu.mit.media.funf.util.HashCodeUtil;
 import edu.mit.media.funf.util.LockUtil;
 import edu.mit.media.funf.util.LogUtil;
 
-public abstract class UploadService extends Service {
+public abstract class UploadService extends IntentService {
 
+	
+	public UploadService() {
+		super("UploadService");
+		// TODO Auto-generated constructor stub
+	}
 	
 	public static final int
 	MAX_REMOTE_ARCHIVE_RETRIES = 6,
@@ -66,65 +70,47 @@ public abstract class UploadService extends Service {
 	private Map<String, Integer> fileFailures;
 	private Map<String, Integer> remoteArchiveFailures;
 	private Queue<ArchiveFile> filesToUpload;
-	private Thread uploadThread;
-	private WakeLock lock;
 
-	@Override
-	public void onCreate() {
-		Log.i(LogUtil.TAG, "Creating...");
-		connectivityManager =(ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-		lock = LockUtil.getWakeLock(this);
-		fileFailures = new HashMap<String, Integer>();
-		remoteArchiveFailures = new HashMap<String, Integer>();
-		filesToUpload = new ConcurrentLinkedQueue<ArchiveFile>();
-		// TODO: consider and add multiple upload threads
-		uploadThread = new Thread(new Runnable() {
-			@Override
-			public void run() {
-				while(Thread.currentThread().equals(uploadThread) && !filesToUpload.isEmpty()) {
-					ArchiveFile archiveFile = filesToUpload.poll();
-					runArchive(archiveFile.archive, archiveFile.remoteArchive, archiveFile.file, archiveFile.network);
-				}
-				uploadThread = null;
-				stopSelf();
-			}
-		});
-	}
-	
-	@Override
-	public void onDestroy() {
-		if (uploadThread != null && uploadThread.isAlive()) {
-			uploadThread = null;
-		}
-		if (lock.isHeld()) {
-			lock.release();
+	private void runUpload() {
+		while(!filesToUpload.isEmpty()) {
+			ArchiveFile archiveFile = filesToUpload.poll();
+			runArchive(archiveFile.archive, archiveFile.remoteArchive, archiveFile.file, archiveFile.network);
 		}
 	}
 	
 	@Override
-	public int onStartCommand(Intent intent, int flags, int startId) {
-		Log.i(LogUtil.TAG, "Starting...");
-		int network = intent.getIntExtra(NETWORK, NETWORK_ANY);
-		if (isOnline(network)) {
-			String archiveName = intent.getStringExtra(ARCHIVE_ID);
-			String remoteArchiveName = intent.getStringExtra(REMOTE_ARCHIVE_ID);
-			if (archiveName != null && remoteArchiveName != null) {
-				FileArchive archive = getArchive(archiveName);
-				RemoteFileArchive remoteArchive = getRemoteArchive(remoteArchiveName);
-				if (archive != null && remoteArchive != null) {
-					for (File file : archive.getAll()) {
-						archive(archive, remoteArchive, file, network);
+	protected void onHandleIntent(Intent intent) {
+		WakeLock wakeLock = LockUtil.getWakeLock(this);
+		Log.i(LogUtil.TAG, "Starting...");		
+		try {
+			// NOTE: moved all this initialization into onHandleIntent - we were seeing inconsistent uploads with a standard service, 
+			// as well as ANR dialogs for background processes when using the old implementation.
+			connectivityManager =(ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+			fileFailures = new HashMap<String, Integer>();
+			remoteArchiveFailures = new HashMap<String, Integer>();
+			filesToUpload = new ConcurrentLinkedQueue<ArchiveFile>();
+			
+			// For some reason, the intent passed in can be null... check for it and skip 
+			int network = intent.getIntExtra(NETWORK, NETWORK_ANY);
+			if (isOnline(network)) {
+				String archiveName = intent.getStringExtra(ARCHIVE_ID);
+				String remoteArchiveName = intent.getStringExtra(REMOTE_ARCHIVE_ID);
+				if (archiveName != null && remoteArchiveName != null) {
+					FileArchive archive = getArchive(archiveName);
+					RemoteFileArchive remoteArchive = getRemoteArchive(remoteArchiveName);
+					if (archive != null && remoteArchive != null) {
+						for (File file : archive.getAll()) {
+							archive(archive, remoteArchive, file, network);
+						}
 					}
 				}
 			}
+	
+			runUpload();	
 		}
-		
-		// Start upload thread if necessary, even if no files to ensure stop
-		if (uploadThread != null && !uploadThread.isAlive()) {
-			uploadThread.start();
+		finally {
+			wakeLock.release();
 		}
-		
-		return Service.START_STICKY;
 	}
 	
 	/**
@@ -155,9 +141,6 @@ public abstract class UploadService extends Service {
 	protected void runArchive(FileArchive archive, RemoteFileArchive remoteArchive, File file, int network) {
 		Integer numRemoteFailures = remoteArchiveFailures.get(remoteArchive.getId());
 		numRemoteFailures = (numRemoteFailures == null) ? 0 : numRemoteFailures;
-		Log.i(LogUtil.TAG, "numRemoteFailures:" + numRemoteFailures );
-		Log.i(LogUtil.TAG, "isOnline:" + isOnline(network) );
-		
 		if (numRemoteFailures < MAX_REMOTE_ARCHIVE_RETRIES && isOnline(network)) {
 			Log.i(LogUtil.TAG, "Archiving..." + file.getName());
 			if(remoteArchive.add(file)) {
@@ -179,6 +162,7 @@ public abstract class UploadService extends Service {
 			Log.i(LogUtil.TAG, "Canceling upload.  Remote archive '" + remoteArchive.getId() + "' is not currently available.");
 		}
 	}
+	
 	
 	/**
 	 * Convenience class for pairing the database name with the db file

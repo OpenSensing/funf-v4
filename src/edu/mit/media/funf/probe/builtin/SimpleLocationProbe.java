@@ -72,6 +72,9 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 	
 	@Configurable
 	private boolean useNetwork = true;
+	
+	@Configurable
+	private boolean useCache = true;
 
 
 	private LocationProbe locationProbe;
@@ -99,19 +102,15 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 				Log.d(LogUtil.TAG, "SimpleLocationProbe evaluated better location.");
 				bestLocation = data;
 			}
-			if (goodEnoughAccuracy != null && bestLocation.get(ACCURACY).getAsDouble() < goodEnoughAccuracy.doubleValue()) {
+			BigDecimal age = startTime.subtract(bestLocation.get(TIMESTAMP).getAsBigDecimal());
+			if (goodEnoughAccuracy != null && 
+					bestLocation.get(ACCURACY).getAsDouble() < goodEnoughAccuracy.doubleValue() &&
+					age.doubleValue() < maxAge.doubleValue()) {
 				Log.d(LogUtil.TAG, "SimpleLocationProbe evaluated good enough location.");
+				Log.d(LogUtil.TAG, String.format("Age, Accuracy: %s %f", age.toString(), bestLocation.get(ACCURACY).getAsDouble()));
 				if (getState() == State.RUNNING) { // Actively Running
 					stop();
-				} else if (getState() == State.ENABLED) { // Passive listening
-					// TODO: do we want to prematurely end this, or wait for the full duration
-					// Things to consider: 
-					// - the device falling to sleep before we send
-					// - too much unrequested data if we send all values within accuracy limits 
-					// (this will restart immediately if more passive data continues to come in)
-					getHandler().removeCallbacks(sendLocationRunnable);
-					sendCurrentBestLocation();
-				}
+				} 
 			}
 		}
 		
@@ -125,6 +124,11 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 		if (bestLocation != null) {
 			JsonObject data = bestLocation.getAsJsonObject();
 			data.remove(PROBE); // Remove probe so that it fills with our probe name
+			if (data.has("mExtras")) {
+				// We're removing the extras if they're available as they are never used and take up space, bandwidth, and time during archiving and uploading.
+				data.remove("mExtras");
+			}
+			Log.i(LogUtil.TAG, data.toString());
 			sendData(data);
 		}
 		startTime = null;
@@ -132,10 +136,19 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 	}
 	
 	private boolean isBetterThanCurrent(IJsonObject newLocation) {
-		BigDecimal age = startTime.subtract(newLocation.get(TIMESTAMP).getAsBigDecimal());
-		return bestLocation == null || 
-				(age.doubleValue() < maxAge.doubleValue() && 
-						bestLocation.get(ACCURACY).getAsDouble() > newLocation.get(ACCURACY).getAsDouble());
+		double newAge = startTime.subtract(newLocation.get(TIMESTAMP).getAsBigDecimal()).doubleValue();
+		double newAccuracy = newLocation.get(ACCURACY).getAsDouble();
+		double bestLocationAccuracy = (bestLocation == null)? Double.MAX_VALUE:bestLocation.get(ACCURACY).getAsDouble();
+		double bestLocationAge = (bestLocation == null)? Double.MAX_VALUE:bestLocation.get(TIMESTAMP).getAsDouble();
+		Log.i(LogUtil.TAG, String.format("Location newAge, newAccuracy, bestAge, bestAccuracy: %s, %s, %s, %s", newAge, newAccuracy, bestLocationAge, bestLocationAccuracy));
+		// location is better than the best if any of the following are true:
+		// 1) best is null 
+		// 2) best is older than maxAge (should only occur for cached locations)
+		// 3) newLocation is younger than maxAge and has better accuracy than bestLocation
+		return 
+			bestLocation == null ||
+			bestLocationAge > maxAge.doubleValue() ||
+			(newAge < maxAge.doubleValue() && newAccuracy < bestLocationAccuracy);
 	}
 	
 	@Override
@@ -148,14 +161,18 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 		if (!useNetwork) {
 			config.addProperty("useNetwork", false);
 		}
+		if (!useCache) {
+			config.addProperty("useCache", false);
+		}
 		locationProbe = getGson().fromJson(config, LocationProbe.class);
-		locationProbe.registerPassiveListener(listener);
+		bestLocation = null;
 	}
 
 	@Override
 	protected void onStart() {
 		super.onStart();
 		Log.d(LogUtil.TAG, "SimpleLocationProbe starting, registering listener");
+		bestLocation = null;
 		startTime = TimeUtil.getTimestamp();
 		locationProbe.registerListener(listener);
 		getHandler().sendMessageDelayed(getHandler().obtainMessage(STOP_MESSAGE), TimeUtil.secondsToMillis(maxWaitTime));
@@ -163,17 +180,16 @@ public class SimpleLocationProbe extends Base implements PassiveProbe, LocationK
 
 	@Override
 	protected void onStop() {
-		super.onStop();
 		Log.d(LogUtil.TAG, "SimpleLocationProbe stopping");
 		getHandler().removeMessages(STOP_MESSAGE);
 		locationProbe.unregisterListener(listener);
 		sendCurrentBestLocation();
+		super.onStop();
 	}
 
 	@Override
 	protected void onDisable() {
 		super.onDisable();
-		locationProbe.unregisterPassiveListener(listener);
 	}
 	
 	

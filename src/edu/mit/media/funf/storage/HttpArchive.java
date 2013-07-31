@@ -61,37 +61,6 @@ public class HttpArchive implements RemoteFileArchive {
 	}
 	
 	public boolean add(File file) {
-		/*
-		HttpClient httpclient = new DefaultHttpClient();
-		try {
-		    httpclient.getParams().setParameter(CoreProtocolPNames.PROTOCOL_VERSION, HttpVersion.HTTP_1_1);
-		    HttpPost httppost = new HttpPost(uploadUrl);
-		    
-		    httppost.setEntity(new FileEntity(file, mimeType));
-	
-		    Log.i(TAG, "executing request " + httppost.getRequestLine());
-		    HttpResponse response = httpclient.execute(httppost);
-	
-		    HttpEntity resEntity = response.getEntity();
-		    if (resEntity == null) {
-		    	Log.i(TAG, "Null response entity.");
-		    	return false;
-		    }
-		    Log.i(TAG, "Response " + response.getStatusLine().getStatusCode() + ": " 
-		    		+ IOUtils.inputStreamToString(resEntity.getContent(), "UTF-8"));
-		} catch (ClientProtocolException e) {
-			Log.e(TAG, e.getLocalizedMessage());
-			e.printStackTrace();
-			return false;
-		} catch (IOException e) {
-			Log.e(TAG, e.getLocalizedMessage());
-			e.printStackTrace();
-			return false;
-		} finally {
-		    httpclient.getConnectionManager().shutdown();
-		}
-	    return true;
-		*/
 		return isValidUrl(uploadUrl) ? uploadFile(file, uploadUrl) : false;
 	}
 	

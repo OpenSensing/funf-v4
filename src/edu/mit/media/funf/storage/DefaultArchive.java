@@ -154,13 +154,14 @@ public class DefaultArchive implements FileArchive {
 			synchronized (this) {
 				if (delegateArchive == null) {
 					SecretKey key = getKey();
-					String rootSdCardPath = getPathOnSDCard();
-					FileArchive backupArchive = FileDirectoryArchive.getRollingFileArchive(new File(rootSdCardPath + "backup"));
-					FileArchive mainArchive = new CompositeFileArchive(
-							getTimestampedDbFileArchive(new File(rootSdCardPath + "archive"), context, key),
-							getTimestampedDbFileArchive(context.getDir("funf_" + databaseName + "_archive", Context.MODE_PRIVATE), context, key)
-							);
-					delegateArchive = new BackedUpArchive(mainArchive, backupArchive);
+					//String rootSdCardPath = getPathOnSDCard();
+					//FileArchive backupArchive = FileDirectoryArchive.getRollingFileArchive(new File(rootSdCardPath + "backup"));
+					//FileArchive mainArchive = new CompositeFileArchive(
+					//		getTimestampedDbFileArchive(new File(rootSdCardPath + "archive"), context, key),
+					//		getTimestampedDbFileArchive(context.getDir("funf_" + databaseName + "_archive", Context.MODE_PRIVATE), context, key)
+					//		);
+					//delegateArchive = new BackedUpArchive(mainArchive, backupArchive);
+					delegateArchive = getTimestampedDbFileArchive(context.getDir("funf_" + databaseName + "_archive", Context.MODE_PRIVATE), context, key);
 				}
 			}
 		}

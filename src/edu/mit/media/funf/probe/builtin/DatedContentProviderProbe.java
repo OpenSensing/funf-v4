@@ -28,6 +28,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import android.content.Context;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 
@@ -35,6 +37,7 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 
 import edu.mit.media.funf.config.Configurable;
+import edu.mit.media.funf.probe.Probe;
 import edu.mit.media.funf.probe.Probe.ContinuableProbe;
 import edu.mit.media.funf.time.DecimalTimeUnit;
 
@@ -44,6 +47,15 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 	protected BigDecimal afterDate = null;
 	
 	private BigDecimal latestTimestamp = null;
+	
+	protected DatedContentProviderProbe() {
+		if (getContext() != null) {
+			SharedPreferences prefs = getContext().getSharedPreferences(Probe.FUNF_PROBE_PREFS, Context.MODE_PRIVATE);
+			if (prefs.contains(getTimestampPrefKey())) {
+				latestTimestamp = BigDecimal.valueOf(prefs.getLong(getTimestampPrefKey(), 0));
+			}
+		}
+	}
 	
 	@Override
 	protected Cursor getCursor(String[] projection) {
@@ -56,6 +68,14 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 			projection = new String[projectionList.size()];
 			projectionList.toArray(projection);
 		}
+		// If there's no latestTimestamp set, let's try and pull one from sharedPreferences one more time...
+		if (latestTimestamp == null) {
+			SharedPreferences prefs = getContext().getSharedPreferences(Probe.FUNF_PROBE_PREFS, Context.MODE_PRIVATE);
+			if (prefs.contains(getTimestampPrefKey())) {
+				latestTimestamp = BigDecimal.valueOf(prefs.getLong(getTimestampPrefKey(), 0));
+			}
+		}
+		
 		String dateFilter = null;
 		String[] dateFilterParams = null;
 		if (afterDate != null || latestTimestamp != null) {
@@ -69,7 +89,7 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 				projection, // TODO: different platforms have different fields supported for content providers, need to resolve this
 				dateFilter, 
 				dateFilterParams,
-                dateColumn + " DESC");
+                dateColumn + " ASC");
 	}
 	
 	protected abstract Uri getContentProviderUri();
@@ -80,11 +100,26 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 		return DecimalTimeUnit.MILLISECONDS;
 	}
 	
+	protected String getTimestampPrefKey() {
+		return getConfig().getAsJsonPrimitive("@type").getAsString() + "_timestamp";
+	}
+	
+	protected void saveCheckpoint() {
+		if (latestTimestamp != null) {
+			getContext().getSharedPreferences(Probe.FUNF_PROBE_PREFS, Context.MODE_PRIVATE).edit().putLong(getTimestampPrefKey(), latestTimestamp.longValue()).commit();
+		}
+	}
+	
 	
 	@Override
 	protected void sendData(JsonObject data) {
 		super.sendData(data);
 		latestTimestamp = getTimestamp(data);
+	}
+	
+	@Override
+	protected void onStop() {
+		saveCheckpoint();
 	}
 
 	@Override
@@ -99,7 +134,8 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 
 	@Override
 	public void setCheckpoint(JsonElement checkpoint) {
-		latestTimestamp = checkpoint == null ? null : checkpoint.getAsBigDecimal();
+		latestTimestamp = (checkpoint == null || checkpoint.isJsonNull()) ? null : checkpoint.getAsBigDecimal();
+		saveCheckpoint();
 	}
 	
 	
