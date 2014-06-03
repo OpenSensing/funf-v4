@@ -75,7 +75,11 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 
 	@Override
 	protected void onStop() {
-		getAccelerometerProbe().unregisterListener(activityCounter);
+		try {
+			getAccelerometerProbe().unregisterListener(activityCounter);
+		} catch (RuntimeException ex) {
+			Log.e("ActivityProbe", "Error unregistering AccelerometerProbe");
+		}
 		// Rather than sending data for every interval, we're aggregating like v0.3 does.
 		// This has the advantage of less entries overall and less data being uploaded = lower data
 		// consumption and hopefully better battery life (as well as lower space requirements).
@@ -104,19 +108,19 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 			@Override
 			public void run() {			
 				if (listeners != null) {
-				JsonElement checkpoint = new JsonObject();
-				for (DataListener listener : listeners) {
-					getDataListeners().remove(listener);
-					listener.onDataCompleted(getConfig(), checkpoint);
+					JsonElement checkpoint = new JsonObject();
+					for (DataListener listener : listeners) {
+						getDataListeners().remove(listener);
+						listener.onDataCompleted(getConfig(), checkpoint);
+					}
+					// If no one is listening, stop using device resources
+					if (getDataListeners().isEmpty()) {
+						stop();
+					}
+					if (getPassiveDataListeners().isEmpty()) {
+						disable();
+					}
 				}
-				// If no one is listening, stop using device resources
-				if (getDataListeners().isEmpty()) {
-					stop();
-				}
-				if (getPassiveDataListeners().isEmpty()) {
-					disable();
-				}
-			}
 			}
 		});
 	}
@@ -151,7 +155,6 @@ public class ActivityProbe extends Base implements ContinuousProbe, PassiveProbe
 		}
 		
 		private void intervalReset() {
-			Log.d(LogUtil.TAG, "interval RESET");
 			// Calculate activity and reset
 			intervalCount++;
 			//JsonObject data = new JsonObject();

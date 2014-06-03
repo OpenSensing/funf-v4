@@ -257,6 +257,16 @@ public class AsyncSharedPrefs implements SharedPreferences, OnSharedPreferenceCh
 			}).start();
 			return true;
 		}
+		@Override
+		public void apply() {
+			// TODO Auto-generated method stub
+			
+		}
+		@Override
+		public Editor putStringSet(String arg0, Set<String> arg1) {
+			// TODO Auto-generated method stub
+			return null;
+		}
 	}
 	
 	
@@ -298,6 +308,12 @@ public class AsyncSharedPrefs implements SharedPreferences, OnSharedPreferenceCh
 				editor.commit();
 			}
 		}).start();
+	}
+
+	@Override
+	public Set<String> getStringSet(String arg0, Set<String> arg1) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 }

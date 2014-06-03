@@ -597,9 +597,8 @@ public interface Probe {
 		}
 
 		protected final void disable() {
-			if (handler != null) {
-				handler.sendMessage(handler.obtainMessage(DISABLE_MESSAGE));
-			}
+			ensureLooperThreadExists();
+			handler.sendMessage(handler.obtainMessage(DISABLE_MESSAGE));			
 		}
 
 		public void destroy() {
@@ -660,6 +659,10 @@ public interface Probe {
 		protected Handler getHandler() {
 			ensureLooperThreadExists();
 			return handler;
+		}
+		
+		public boolean postDelayed(Runnable runnable, long delayMillis) {
+			return getHandler().postDelayed(runnable, delayMillis);
 		}
 
 		/**

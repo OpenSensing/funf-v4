@@ -42,7 +42,7 @@ public class BasicPipeline implements Pipeline, DataListener {
 	@Configurable
 	protected Map<String,Schedule> schedules = new HashMap<String, Schedule>();  // Specially named field for collecting schedules
 	protected FunfManager manager;
-	private Gson gson;
+	protected Gson gson;
 	
 
 	@Configurable
