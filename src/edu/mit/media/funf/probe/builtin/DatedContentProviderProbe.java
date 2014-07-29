@@ -40,11 +40,15 @@ import edu.mit.media.funf.config.Configurable;
 import edu.mit.media.funf.probe.Probe;
 import edu.mit.media.funf.probe.Probe.ContinuableProbe;
 import edu.mit.media.funf.time.DecimalTimeUnit;
+import edu.mit.media.funf.time.TimeUtil;
 
 public abstract class DatedContentProviderProbe extends ContentProviderProbe implements ContinuableProbe {
 
 	@Configurable
 	protected BigDecimal afterDate = null;
+	
+	@Configurable
+	protected boolean afterInstall = false; 
 	
 	private BigDecimal latestTimestamp = null;
 	
@@ -53,6 +57,11 @@ public abstract class DatedContentProviderProbe extends ContentProviderProbe imp
 			SharedPreferences prefs = getContext().getSharedPreferences(Probe.FUNF_PROBE_PREFS, Context.MODE_PRIVATE);
 			if (prefs.contains(getTimestampPrefKey())) {
 				latestTimestamp = BigDecimal.valueOf(prefs.getLong(getTimestampPrefKey(), 0));
+			} else if (afterInstall) {
+				// If there's no preference stored for the latestTimestamp, and afterInstall is set, then this is the first run
+				// Store the current timestamp as the latest so we don't take historical data
+				latestTimestamp = TimeUtil.getTimestamp();
+				prefs.edit().putLong(getTimestampPrefKey(), latestTimestamp.longValue()).commit();
 			}
 		}
 	}
