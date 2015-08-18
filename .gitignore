@@ -33,3 +33,4 @@ proguard/
 .navigation/
 .DS_Store
 .idea
+*.iml
