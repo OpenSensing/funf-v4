@@ -6,10 +6,13 @@
 
 **Implemented enhancements:**
 
-- change archiving to gzipped json [\#1](https://github.com/OpenSensing/funf-v4/issues/1)
+- Add LGPL license file [\#10](https://github.com/OpenSensing/funf-v4/issues/10)
+- Option to compress archives \(using gzip\) [\#1](https://github.com/OpenSensing/funf-v4/issues/1)
 
 **Merged pull requests:**
 
+- Added license file [\#13](https://github.com/OpenSensing/funf-v4/pull/13) ([h0pbeat](https://github.com/h0pbeat))
+- added changelog [\#5](https://github.com/OpenSensing/funf-v4/pull/5) ([h0pbeat](https://github.com/h0pbeat))
 - implemented gzip compression of the files, configurable in pipeline config [\#2](https://github.com/OpenSensing/funf-v4/pull/2) ([h0pbeat](https://github.com/h0pbeat))
 
 ## [0.4.2](https://github.com/OpenSensing/funf-v4/tree/0.4.2) (2015-08-18)
