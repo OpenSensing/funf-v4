@@ -23,18 +23,6 @@
  */
 package edu.mit.media.funf;
 
-import static edu.mit.media.funf.util.LogUtil.TAG;
-
-import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-
 import android.app.AlarmManager;
 import android.app.PendingIntent;
 import android.app.Service;
@@ -63,6 +51,21 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 import com.google.gson.TypeAdapterFactory;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
 import edu.mit.media.funf.Schedule.BasicSchedule;
 import edu.mit.media.funf.Schedule.DefaultSchedule;
 import edu.mit.media.funf.config.ConfigUpdater;
@@ -88,8 +91,11 @@ import edu.mit.media.funf.storage.FileArchive;
 import edu.mit.media.funf.storage.HttpArchive;
 import edu.mit.media.funf.storage.RemoteFileArchive;
 import edu.mit.media.funf.time.TimeUtil;
+import edu.mit.media.funf.util.IOUtil;
 import edu.mit.media.funf.util.LogUtil;
 import edu.mit.media.funf.util.StringUtil;
+
+import static edu.mit.media.funf.util.LogUtil.TAG;
 
 public class FunfManager extends Service {
 	
@@ -109,7 +115,9 @@ public class FunfManager extends Service {
 	PROBE_ACTION_UNREGISTER = "unregister",
 	PROBE_ACTION_REGISTER_PASSIVE = "register-passive",
 	PROBE_ACTION_UNREGISTER_PASSIVE = "unregister-passive";
-	
+
+	public static Context context = null;
+	public static FunfManager funfManager = null;
 	
 	private Handler handler;
 	private JsonParser parser;
@@ -157,6 +165,8 @@ public class FunfManager extends Service {
 		this.disabledPipelines = new HashMap<String, Pipeline>();
 		this.disabledPipelineNames = new HashSet<String>(Arrays.asList(prefs.getString(DISABLED_PIPELINE_LIST, "").split(",")));
 		this.disabledPipelineNames.remove(""); // Remove the empty name, if no disabled pipelines exist
+		FunfManager.context = this;
+		funfManager = this;
 		reload();
 	}
 	
@@ -210,7 +220,29 @@ public class FunfManager extends Service {
 	    registerPipeline(name, newPipeline); // Will unregister previous before running
 	  }
 	}
-	
+
+	public String getVersion() {
+		String version = "unknown";
+		BufferedReader reader = null;
+		try{
+			reader = new BufferedReader(new InputStreamReader(getAssets().open("build.info")));
+			version = reader.readLine().trim();
+		} catch (IOException e) {
+
+		}
+		finally {
+			if (reader != null) {
+				try {
+					reader.close();
+				} catch (IOException e) {
+
+				}
+			}
+		}
+
+		return version;
+	}
+
 	public JsonObject getPipelineConfig(String name) {
 	  String configString = prefs.getString(name, null);
 	  Bundle metadata = getMetadata();
@@ -456,7 +488,6 @@ public class FunfManager extends Service {
 	
 	public void registerPipeline(String name, Pipeline pipeline) {
 		synchronized (pipelines) {
-		  Log.d(LogUtil.TAG, "Registering pipeline: " + name);
 			unregisterPipeline(name);
 			pipelines.put(name, pipeline);
 			pipeline.onCreate(this);
@@ -710,7 +741,25 @@ public class FunfManager extends Service {
 		scheduler.cancel(PROBE_TYPE, getComponenentUri(probeConfig, PROBE_ACTION_REGISTER_PASSIVE));
 		scheduler.cancel(PROBE_TYPE, getComponenentUri(probeConfig, PROBE_ACTION_UNREGISTER_PASSIVE));
 	}
-	
+
+	public void setAuthToken(String url, String accessToken) {
+		URI uri = null;
+		try {
+			uri = new URI(url);
+			getSharedPreferences("funf_auth", MODE_PRIVATE).edit().putString(IOUtil.md5(uri.getHost()), accessToken).commit();
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+
+
+	}
+
+	public void authError() {
+		Log.i(TAG, "sending authError broadcast");
+		Intent intent = new Intent(context.getPackageName() + "." + "AUTHENTICATION_ERROR");
+		sendBroadcast(intent);
+	}
+
 	////////////////////////////////////////////////////
 
 
@@ -787,7 +836,7 @@ public class FunfManager extends Service {
 			}
 						
 		}
-		
+
 		// TODO: Feature to wait a certain amount of seconds after boot to begin
 		// TODO: Feature to prevent too many things from running at once, w/ random backoff times
 		
